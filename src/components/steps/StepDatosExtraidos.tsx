@@ -1,183 +1,219 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { DatosFactura } from '@/lib/calculadora';
-import { necesitaMasFacturas } from '@/lib/facturaParser';
+import { parsearRespuestaLLM } from '@/lib/facturaParser';
 
 interface Props {
-  datos: DatosFactura;
-  onConfirmar: (datos: DatosFactura) => void;
-  onVolver: () => void;
+  onFacturaProcesada: (datos: DatosFactura) => void;
+  onProcesando: () => void;
+  onManual: () => void;
 }
 
-export default function StepDatosExtraidos({ datos, onConfirmar, onVolver }: Props) {
-  const [editando, setEditando] = useState(false);
-  const [datosEditados, setDatosEditados] = useState(datos);
-  const pideMasFacturas = necesitaMasFacturas(datos);
+export default function StepUploadFactura({ onFacturaProcesada, onProcesando, onManual }: Props) {
+  const [error, setError] = useState<string | null>(null);
+  const [archivos, setArchivos] = useState<File[]>([]);
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    setError(null);
+
+    if (acceptedFiles.length === 0) {
+      setError('No se pudo leer el archivo. Intentá con un PDF o imagen.');
+      return;
+    }
+
+    setArchivos(prev => [...prev, ...acceptedFiles]);
+    onProcesando();
+
+    try {
+      const file = acceptedFiles[0];
+      const formData = new FormData();
+      formData.append('factura', file);
+
+      const response = await fetch('/api/procesar-factura', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Si es 501 (API no configurada), usar modo demo
+        if (response.status === 501) {
+          console.log('Modo demo activado');
+          onFacturaProcesada(getDatosDemo());
+          return;
+        }
+        throw new Error(data.error || 'Error al procesar la factura');
+      }
+
+      // Respuesta exitosa de Gemini — parsear al formato interno
+      const datosFactura = parsearRespuestaLLM(JSON.stringify(data));
+
+      if (datosFactura) {
+        onFacturaProcesada(datosFactura);
+      } else {
+        setError('No pudimos interpretar los datos. ¿Querés probar con otra foto o ingresar manualmente?');
+      }
+    } catch (err: any) {
+      console.error('Error:', err);
+      setError(err.message || 'Error al procesar. Intentá con otra imagen o ingresá manualmente.');
+    }
+  }, [onFacturaProcesada, onProcesando]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
+    },
+    maxFiles: 5,
+    maxSize: 10 * 1024 * 1024,
+  });
 
   return (
-    <div className="max-w-lg mx-auto animate-slide-up">
-      <div className="text-center mb-6">
-        <span className="text-4xl">✅</span>
-        <h3 className="text-2xl font-bold text-rayo-azul-oscuro mt-2">
-          ¡Factura analizada!
-        </h3>
-        <p className="text-sm text-gray-500 mt-1">
-          Verificá que los datos sean correctos
+    <div className="animate-fade-in">
+      {/* Hero */}
+      <div className="text-center mb-8">
+        <h2 className="text-3xl sm:text-4xl font-bold text-rayo-azul-oscuro mb-3">
+          Tu presupuesto solar <br />
+          <span className="text-rayo-azul-medio">en 60 segundos</span> ⚡
+        </h2>
+        <p className="text-rayo-gris-medio max-w-md mx-auto">
+          Subí tu factura de luz y nuestro sistema extrae toda la información
+          necesaria automáticamente.
         </p>
       </div>
 
-      {/* Datos del cliente */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
-        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-          👤 Datos del titular
-        </h4>
-        <div className="space-y-2">
-          <DatoRow label="Nombre" value={datosEditados.titular} />
-          <DatoRow label="Dirección" value={`${datosEditados.direccion}, ${datosEditados.localidad}`} />
-          <DatoRow label="Partido" value={datosEditados.partido} />
-          <DatoRow label="Distribuidora" value={datosEditados.distribuidora} highlight />
-        </div>
-      </div>
+      {/* Dropzone */}
+      <div
+        {...getRootProps()}
+        className={`
+          border-3 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer
+          transition-all duration-300 max-w-lg mx-auto
+          ${isDragActive
+            ? 'border-rayo-amarillo bg-yellow-50 scale-[1.02]'
+            : 'border-gray-300 bg-white hover:border-rayo-azul-medio hover:bg-blue-50'
+          }
+        `}
+      >
+        <input {...getInputProps()} />
 
-      {/* Datos de consumo */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
-        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-          ⚡ Consumo eléctrico
-        </h4>
-        <div className="space-y-2">
-          <DatoRow
-            label="Consumo del período"
-            value={`${datosEditados.consumoKwhPeriodo} kWh (${datosEditados.periodoDias} días)`}
-          />
-          <DatoRow
-            label="Consumo mensual estimado"
-            value={`${datosEditados.consumoKwhMensual} kWh`}
-            highlight
-          />
-          {datosEditados.historialKwh.length > 1 && (
-            <DatoRow
-              label="Promedio 6 meses"
-              value={`${datosEditados.consumoPromedioMensual} kWh`}
-              highlight
-            />
-          )}
-          <DatoRow label="Categoría" value={datosEditados.categoriaTarifaria} />
+        <div className="mb-4">
+          <span className="text-5xl">{isDragActive ? '⚡' : '📄'}</span>
         </div>
 
-        {/* Mini gráfico historial */}
-        {datosEditados.historialKwh.length > 1 && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400 mb-2">Historial de consumo</p>
-            <div className="flex items-end gap-1.5 h-20">
-              {datosEditados.historialKwh.map((h, i) => {
-                const max = Math.max(...datosEditados.historialKwh.map(x => x.kwh));
-                const height = max > 0 ? (h.kwh / max) * 100 : 0;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-gray-500">{h.kwh}</span>
-                    <div
-                      className="w-full bg-rayo-azul-medio rounded-t transition-all"
-                      style={{ height: `${height}%`, minHeight: '4px' }}
-                    />
-                    <span className="text-[9px] text-gray-400">
-                      {h.mes.split('/')[0]}
-                    </span>
-                  </div>
-                );
-              })}
+        {isDragActive ? (
+          <p className="text-lg font-semibold text-rayo-azul-oscuro">
+            ¡Soltá tu factura acá!
+          </p>
+        ) : (
+          <>
+            <p className="text-lg font-semibold text-rayo-azul-oscuro mb-2">
+              Arrastrá tu factura de luz acá
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
+              o tocá para seleccionar archivo
+            </p>
+            <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
+              <span className="bg-gray-100 px-2 py-1 rounded">PDF</span>
+              <span className="bg-gray-100 px-2 py-1 rounded">JPG</span>
+              <span className="bg-gray-100 px-2 py-1 rounded">PNG</span>
+              <span>Máx. 10MB</span>
             </div>
+          </>
+        )}
+
+        {archivos.length > 0 && !error && (
+          <div className="mt-4 text-sm text-green-600">
+            ✅ {archivos.length} archivo(s) cargado(s)
           </div>
         )}
       </div>
 
-      {/* Datos económicos */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
-        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-          💰 Tu factura
-        </h4>
-        <div className="space-y-2">
-          <DatoRow label="Cargo fijo" value={`$${datosEditados.cargoFijoArs.toLocaleString('es-AR')}`} />
-          <DatoRow label="Cargo variable (energía)" value={`$${datosEditados.cargoVariableArs.toLocaleString('es-AR')}`} />
-          <DatoRow label="Impuestos y tasas" value={`$${datosEditados.impuestosArs.toLocaleString('es-AR')}`} />
-          <DatoRow
-            label="Total factura"
-            value={`$${datosEditados.totalFacturaArs.toLocaleString('es-AR')}`}
-            highlight
-            big
-          />
-          <DatoRow
-            label="Precio por kWh"
-            value={`$${datosEditados.precioKwhEfectivoArs.toLocaleString('es-AR')}`}
-          />
-          <DatoRow
-            label="Subsidio"
-            value={datosEditados.tieneSubsidio ? 'Sí' : 'No'}
-          />
-        </div>
+      {/* Distribuidoras soportadas */}
+      <div className="flex items-center justify-center gap-6 mt-6 text-sm text-gray-400">
+        <span>Soportamos:</span>
+        <span className="font-medium text-gray-600">EDENOR</span>
+        <span className="text-gray-300">|</span>
+        <span className="font-medium text-gray-600">EDESUR</span>
       </div>
 
-      {/* Alerta Edenor: pedir más facturas */}
-      {pideMasFacturas && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
-          <p className="text-sm text-yellow-800">
-            <strong>💡 Tip:</strong> Tu factura de Edenor solo muestra un período.
-            Para un presupuesto más preciso, podrías subir 2-3 facturas de meses
-            distintos. Pero no te preocupes, ¡podemos avanzar con esta!
-          </p>
+      {/* Error */}
+      {error && (
+        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-center max-w-lg mx-auto">
+          <p className="text-red-600 text-sm mb-3">{error}</p>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => { setError(null); setArchivos([]); }}
+              className="text-xs bg-white border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50"
+            >
+              🔄 Intentar de nuevo
+            </button>
+            <button
+              onClick={onManual}
+              className="text-xs bg-rayo-azul-oscuro text-rayo-amarillo px-3 py-1.5 rounded-lg hover:bg-rayo-azul-medio"
+            >
+              ✏️ Ingresar manualmente
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Cargo fijo warning */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-        <p className="text-sm text-blue-800">
-          <strong>📌 Importante:</strong> El cargo fijo ($
-          {datosEditados.cargoFijoArs.toLocaleString('es-AR')}) no se reduce con
-          energía solar. El ahorro se calcula sobre el cargo variable.
-        </p>
-      </div>
+      {/* Link a manual */}
+      {!error && (
+        <div className="text-center mt-8">
+          <button
+            onClick={onManual}
+            className="text-sm text-rayo-azul-medio hover:text-rayo-azul-oscuro underline transition-colors"
+          >
+            No tengo la factura → Ingresar datos manualmente
+          </button>
+        </div>
+      )}
 
-      {/* Botones */}
-      <div className="flex gap-3">
-        <button
-          onClick={onVolver}
-          className="flex-1 py-3 px-4 border border-gray-300 text-gray-600 rounded-xl
-                     hover:bg-gray-50 transition-colors text-sm"
-        >
-          ← Subir otra factura
-        </button>
-        <button
-          onClick={() => onConfirmar(datosEditados)}
-          className="flex-1 py-3 px-4 bg-rayo-azul-oscuro text-rayo-amarillo rounded-xl
-                     hover:bg-rayo-azul-medio transition-colors font-semibold text-sm
-                     shadow-lg hover:shadow-xl"
-        >
-          Datos correctos ✓ Continuar
-        </button>
+      {/* Trust indicators */}
+      <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-xs text-gray-400">
+        <span>🔒 Tus datos son privados</span>
+        <span>🤝 Cooperativa con Triple Impacto</span>
+        <span>⚡ Sin compromiso</span>
       </div>
     </div>
   );
 }
 
-function DatoRow({
-  label, value, highlight, big
-}: {
-  label: string; value: string; highlight?: boolean; big?: boolean;
-}) {
-  return (
-    <div className="flex justify-between items-center">
-      <span className="text-sm text-gray-500">{label}</span>
-      <span
-        className={`text-sm font-medium ${
-          big
-            ? 'text-lg font-bold text-rayo-azul-oscuro'
-            : highlight
-            ? 'text-rayo-azul-oscuro font-semibold'
-            : 'text-gray-700'
-        }`}
-      >
-        {value}
-      </span>
-    </div>
-  );
+// Datos de demostración (fallback cuando no hay API)
+function getDatosDemo(): DatosFactura {
+  return {
+    distribuidora: 'EDESUR',
+    titular: 'LOPEZ JOSE MARIO',
+    direccion: 'SOLIER 2907',
+    localidad: 'Sarandí',
+    partido: 'Avellaneda',
+    codigoPostal: '1872',
+    cuit: '20-07619794-7',
+    numeroCliente: '03244263',
+    numeroSuministro: '0501-77421175 18',
+    numeroMedidor: '010196585',
+    categoriaTarifaria: 'T1 R Residencial 1 M',
+    consumoKwhPeriodo: 84,
+    periodoDias: 32,
+    consumoKwhMensual: 79,
+    consumoPromedioMensual: 119,
+    historialKwh: [
+      { mes: '10/2025', kwh: 104 },
+      { mes: '11/2025', kwh: 126 },
+      { mes: '12/2025', kwh: 112 },
+      { mes: '01/2026', kwh: 148 },
+      { mes: '02/2026', kwh: 160 },
+      { mes: '03/2026', kwh: 84 },
+    ],
+    cargoFijoArs: 1540.41,
+    cargoVariableArs: 11087.71,
+    impuestosArs: 3987.56,
+    totalFacturaArs: 26364.71,
+    precioKwhEfectivoArs: 131.99,
+    tieneSubsidio: false,
+  };
 }
