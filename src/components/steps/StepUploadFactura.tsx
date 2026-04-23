@@ -11,10 +11,42 @@ interface Props {
   onManual: () => void;
 }
 
+const PASOS_LECTURA = [
+  { texto: 'Recibiendo tu factura...', emoji: '📄' },
+  { texto: 'Enviando a nuestro lector inteligente...', emoji: '🤖' },
+  { texto: 'Identificando distribuidora...', emoji: '🔍' },
+  { texto: 'Extrayendo datos de consumo...', emoji: '⚡' },
+  { texto: 'Leyendo datos del titular...', emoji: '👤' },
+  { texto: 'Analizando importes y cargos...', emoji: '💰' },
+  { texto: 'Buscando historial de consumo...', emoji: '📊' },
+  { texto: 'Casi listo, preparando resultados...', emoji: '✨' },
+];
+
 export default function StepUploadFactura({ onFacturaProcesada, onProcesando, onManual }: Props) {
   const [error, setError] = useState<string | null>(null);
-  const [archivos, setArchivos] = useState<File[]>([]);
   const [detalleError, setDetalleError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [pasoLectura, setPasoLectura] = useState(0);
+  const [progreso, setProgreso] = useState(0);
+
+  const iniciarAnimacion = () => {
+    setCargando(true);
+    setPasoLectura(0);
+    setProgreso(0);
+
+    let paso = 0;
+    const interval = setInterval(() => {
+      paso++;
+      if (paso < PASOS_LECTURA.length) {
+        setPasoLectura(paso);
+        setProgreso(Math.round((paso / PASOS_LECTURA.length) * 100));
+      } else {
+        setProgreso(95);
+      }
+    }, 2500);
+
+    return interval;
+  };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setError(null);
@@ -25,8 +57,7 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
       return;
     }
 
-    setArchivos(acceptedFiles);
-    onProcesando();
+    const animInterval = iniciarAnimacion();
 
     try {
       const file = acceptedFiles[0];
@@ -40,7 +71,10 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
 
       const data = await response.json();
 
+      clearInterval(animInterval);
+
       if (!response.ok) {
+        setCargando(false);
         setDetalleError(`Status: ${response.status} - ${JSON.stringify(data).substring(0, 300)}`);
         throw new Error(data.error || 'Error al procesar la factura');
       }
@@ -48,15 +82,23 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
       const datosFactura = parsearRespuestaLLM(JSON.stringify(data));
 
       if (datosFactura) {
-        onFacturaProcesada(datosFactura);
+        setProgreso(100);
+        setPasoLectura(PASOS_LECTURA.length - 1);
+        setTimeout(() => {
+          setCargando(false);
+          onFacturaProcesada(datosFactura);
+        }, 500);
       } else {
+        setCargando(false);
         setError('Pudimos leer la factura pero no interpretar los datos. Probá con otra imagen o ingresá manualmente.');
       }
     } catch (err: any) {
+      clearInterval(animInterval);
+      setCargando(false);
       console.error('Error:', err);
       setError(err.message || 'Error al procesar la factura.');
     }
-  }, [onFacturaProcesada, onProcesando]);
+  }, [onFacturaProcesada]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -66,8 +108,75 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
     },
     maxFiles: 5,
     maxSize: 10 * 1024 * 1024,
+    disabled: cargando,
   });
 
+  // PANTALLA DE CARGA
+  if (cargando) {
+    return (
+      <div className="animate-fade-in">
+        <div className="max-w-md mx-auto text-center py-8">
+          {/* Rayo animado */}
+          <div className="relative mb-6">
+            <div className="text-6xl animate-bounce">⚡</div>
+          </div>
+
+          <h3 className="text-xl font-bold text-rayo-azul-oscuro mb-2">
+            Analizando tu factura...
+          </h3>
+          <p className="text-sm text-gray-500 mb-6">
+            Nuestro lector inteligente está extrayendo tus datos
+          </p>
+
+          {/* Barra de progreso */}
+          <div className="w-full bg-gray-200 rounded-full h-3 mb-6 overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-rayo-azul-medio to-rayo-amarillo h-3 rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${progreso}%` }}
+            />
+          </div>
+
+          {/* Pasos con animación */}
+          <div className="space-y-3 text-left bg-white rounded-2xl p-5 shadow-sm">
+            {PASOS_LECTURA.map((paso, idx) => (
+              <div
+                key={idx}
+                className={`flex items-center gap-3 transition-all duration-500 ${
+                  idx <= pasoLectura
+                    ? 'opacity-100'
+                    : 'opacity-20'
+                }`}
+              >
+                <span className="text-lg w-7 text-center">
+                  {idx < pasoLectura ? '✅' : idx === pasoLectura ? paso.emoji : '⬜'}
+                </span>
+                <span
+                  className={`text-sm ${
+                    idx < pasoLectura
+                      ? 'text-green-600 line-through'
+                      : idx === pasoLectura
+                      ? 'text-rayo-azul-oscuro font-semibold'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  {paso.texto}
+                </span>
+                {idx === pasoLectura && (
+                  <span className="inline-block w-1.5 h-1.5 bg-rayo-amarillo rounded-full animate-ping" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs text-gray-400 mt-4">
+            Esto puede tomar entre 10 y 30 segundos
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // PANTALLA PRINCIPAL (upload)
   return (
     <div className="animate-fade-in">
       <div className="text-center mb-8">
@@ -146,7 +255,7 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
 
           <div className="flex gap-2 justify-center mt-3">
             <button
-              onClick={() => { setError(null); setDetalleError(null); setArchivos([]); }}
+              onClick={() => { setError(null); setDetalleError(null); }}
               className="text-sm bg-white border border-red-200 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors"
             >
               🔄 Intentar de nuevo
