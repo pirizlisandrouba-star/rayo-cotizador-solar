@@ -9,14 +9,14 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: 'No se recibió ningún archivo' },
+        { error: 'No se recibio ningun archivo' },
         { status: 400 }
       );
     }
 
     if (!GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: 'API key no configurada. Modo demo activo.' },
+        { error: 'API key no configurada.' },
         { status: 501 }
       );
     }
@@ -48,7 +48,7 @@ REGLAS:
 - El cargo_variable_ars es la suma de cargos por energia consumida
 - Los impuestos_ars incluyen IVA, contribuciones municipales, ley 7290, etc
 - Si un campo no se puede leer con certeza, usa null
-- Responde UNICAMENTE con el JSON, sin texto antes ni despues, sin backticks, sin markdown
+- MUY IMPORTANTE: Responde UNICAMENTE con el JSON puro, SIN backticks, SIN la palabra json, SIN markdown, SIN texto antes ni despues. Solo el JSON que empiece con { y termine con }
 
 {
   "extraccion_exitosa": true,
@@ -91,7 +91,7 @@ REGLAS:
   }
 }`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
 
     const requestBody = {
       contents: [
@@ -111,14 +111,11 @@ REGLAS:
       ],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 2000
+        maxOutputTokens: 4000
       }
     };
 
     console.log('Llamando a Gemini 2.5 Flash...');
-    console.log('URL:', url.replace(GEMINI_API_KEY, 'KEY_HIDDEN'));
-    console.log('MimeType:', mimeType);
-    console.log('Base64 length:', base64.length);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -130,12 +127,11 @@ REGLAS:
 
     const responseText = await response.text();
     console.log('Gemini status:', response.status);
-    console.log('Gemini response:', responseText.substring(0, 300));
 
     if (!response.ok) {
-      console.error('Error Gemini completo:', responseText);
+      console.error('Error Gemini:', responseText.substring(0, 500));
       return NextResponse.json(
-        { error: `Error Gemini ${response.status}: ${responseText.substring(0, 300)}` },
+        { error: 'Error Gemini ' + response.status + ': ' + responseText.substring(0, 300) },
         { status: 502 }
       );
     }
@@ -144,9 +140,9 @@ REGLAS:
     try {
       result = JSON.parse(responseText);
     } catch (e) {
-      console.error('Gemini no devolvio JSON:', responseText.substring(0, 500));
+      console.error('Gemini no devolvio JSON valido:', responseText.substring(0, 500));
       return NextResponse.json(
-        { error: 'Respuesta invalida del servicio de IA' },
+        { error: 'Respuesta invalida de Gemini' },
         { status: 502 }
       );
     }
@@ -154,37 +150,49 @@ REGLAS:
     const contenido = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     if (!contenido) {
-      console.error('Sin contenido. Candidates:', JSON.stringify(result.candidates || {}).substring(0, 500));
+      console.error('Sin contenido en respuesta:', JSON.stringify(result).substring(0, 500));
       return NextResponse.json(
-        { error: 'La IA no pudo leer la factura.' },
+        { error: 'Gemini no pudo leer la factura.' },
         { status: 422 }
       );
     }
 
-    console.log('Gemini texto:', contenido.substring(0, 200));
+    console.log('Gemini respondio. Largo:', contenido.length);
+    console.log('Primeros 100 chars:', contenido.substring(0, 100));
 
-let jsonData;
+    // PARSEO ROBUSTO: limpiar cualquier wrapper que Gemini agregue
+    let jsonData;
     try {
       let clean = contenido.trim();
-      
-      const jsonBlockRegex = /```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/;
-      const match = clean.match(jsonBlockRegex);
-      if (match) {
-        clean = match[1].trim();
+
+      // Quitar backticks del inicio uno por uno
+      while (clean.length > 0 && clean.charAt(0) === '`') {
+        clean = clean.substring(1);
       }
-      
-      if (!clean.startsWith('{')) {
-        const jsonStart = clean.indexOf('{');
-        const jsonEnd = clean.lastIndexOf('}');
-        if (jsonStart !== -1 && jsonEnd !== -1) {
-          clean = clean.substring(jsonStart, jsonEnd + 1);
-        }
+      // Si despues de los backticks dice "json", quitarlo
+      if (clean.toLowerCase().startsWith('json')) {
+        clean = clean.substring(4);
+      }
+      // Quitar backticks del final uno por uno
+      while (clean.length > 0 && clean.charAt(clean.length - 1) === '`') {
+        clean = clean.substring(0, clean.length - 1);
       }
 
-      console.log('JSON limpio:', clean.substring(0, 200));
+      clean = clean.trim();
+
+      // Buscar desde el primer { hasta el ultimo }
+      const firstBrace = clean.indexOf('{');
+      const lastBrace = clean.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        clean = clean.substring(firstBrace, lastBrace + 1);
+      }
+
+      console.log('JSON limpio. Primeros 100:', clean.substring(0, 100));
       jsonData = JSON.parse(clean);
+      console.log('JSON parseado OK');
     } catch (parseError) {
-      console.error('No se pudo parsear:', contenido);
+      console.error('PARSE ERROR. Contenido raw completo:');
+      console.error(contenido);
       return NextResponse.json(
         { error: 'No se pudo interpretar. Respuesta: ' + contenido.substring(0, 200) },
         { status: 422 }
@@ -198,7 +206,7 @@ let jsonData;
       );
     }
 
-    console.log('EXITO:', jsonData.distribuidora, jsonData.consumo?.consumo_kwh_periodo, 'kWh');
+    console.log('EXITO:', jsonData.distribuidora, jsonData.consumo?.consumo_kwh_periodo, 'kWh', jsonData.titular?.nombre);
     return NextResponse.json(jsonData);
 
   } catch (error: any) {
