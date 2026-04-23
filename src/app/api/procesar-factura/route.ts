@@ -163,18 +163,29 @@ REGLAS:
 
     console.log('Gemini texto:', contenido.substring(0, 200));
 
-    let jsonData;
+let jsonData;
     try {
       let clean = contenido.trim();
+      // Remover markdown wrappers
       if (clean.startsWith('```json')) clean = clean.slice(7);
-      if (clean.startsWith('```')) clean = clean.slice(3);
+      else if (clean.startsWith('```')) clean = clean.slice(3);
       if (clean.endsWith('```')) clean = clean.slice(0, -3);
       clean = clean.trim();
+
+      // Intentar encontrar JSON dentro del texto si no empieza con {
+      if (!clean.startsWith('{')) {
+        const jsonStart = clean.indexOf('{');
+        const jsonEnd = clean.lastIndexOf('}');
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+          clean = clean.substring(jsonStart, jsonEnd + 1);
+        }
+      }
+
       jsonData = JSON.parse(clean);
     } catch (parseError) {
-      console.error('Error parseando:', contenido.substring(0, 500));
+      console.error('No se pudo parsear. Contenido completo de Gemini:', contenido);
       return NextResponse.json(
-        { error: 'No se pudo interpretar la factura.' },
+        { error: 'No se pudo interpretar la factura. Respuesta de Gemini: ' + contenido.substring(0, 200) },
         { status: 422 }
       );
     }
