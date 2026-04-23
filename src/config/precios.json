@@ -1,0 +1,104 @@
+{
+  "_comentario": "Archivo de configuración de precios — Editable sin tocar código",
+  "_ultima_actualizacion": "2026-04-23",
+  "_moneda_equipos": "USD",
+  "_referencia_tc": "Dólar oficial BNA TC Vendedor",
+
+  "tipo_cambio_usd_ars": 1180,
+
+  "paquetes": {
+    "starter": {
+      "nombre": "RAYO STARTER",
+      "paneles": 4,
+      "potencia_kwp": 2.32,
+      "potencia_panel_wp": 580,
+      "precio_on_grid_usd": 5500,
+      "precio_hibrido_usd": 7450,
+      "incluye": [
+        "4 Paneles solares 580W Tier 1",
+        "Inversor On-Grid",
+        "Estructura de montaje",
+        "Cableado y protecciones eléctricas",
+        "Instalación completa",
+        "Gestión de trámite ante distribuidora",
+        "Garantía 1 año sobre instalación",
+        "Mantenimiento anual incluido (1er año)",
+        "Monitoreo remoto 24/7"
+      ],
+      "espacio_techo_m2": 10.4
+    },
+    "hogar": {
+      "nombre": "RAYO HOGAR",
+      "paneles": 8,
+      "potencia_kwp": 4.64,
+      "potencia_panel_wp": 580,
+      "precio_on_grid_usd": 8200,
+      "precio_hibrido_usd": 10980,
+      "incluye": [
+        "8 Paneles solares 580W Tier 1",
+        "Inversor On-Grid",
+        "Estructura de montaje",
+        "Cableado y protecciones eléctricas",
+        "Instalación completa",
+        "Gestión de trámite ante distribuidora",
+        "Garantía 1 año sobre instalación",
+        "Mantenimiento anual incluido (1er año)",
+        "Monitoreo remoto 24/7"
+      ],
+      "espacio_techo_m2": 20.8
+    },
+    "total": {
+      "nombre": "RAYO TOTAL",
+      "paneles": 12,
+      "potencia_kwp": 6.96,
+      "potencia_panel_wp": 580,
+      "precio_on_grid_usd": 10900,
+      "precio_hibrido_usd": 14500,
+      "incluye": [
+        "12 Paneles solares 580W Tier 1",
+        "Inversor On-Grid",
+        "Estructura de montaje",
+        "Cableado y protecciones eléctricas",
+        "Instalación completa",
+        "Gestión de trámite ante distribuidora",
+        "Garantía 1 año sobre instalación",
+        "Mantenimiento anual incluido (1er año)",
+        "Monitoreo remoto 24/7"
+      ],
+      "espacio_techo_m2": 31.2
+    }
+  },
+
+  "estructura_costos_porcentaje": {
+    "on_grid": {
+      "inversor": 0.07,
+      "bateria": 0,
+      "paneles": 0.10,
+      "estructuras": 0.08,
+      "otro_hardware": 0.15,
+      "mano_obra": 0.29,
+      "tramites": 0.05,
+      "margen": 0.25,
+      "imp_cheque": 0.01
+    },
+    "hibrido": {
+      "inversor": 0.11,
+      "bateria": 0.10,
+      "paneles": 0.09,
+      "estructuras": 0.06,
+      "otro_hardware": 0.11,
+      "mano_obra": 0.21,
+      "tramites": 0.02,
+      "margen": 0.29,
+      "imp_cheque": 0.01
+    }
+  },
+
+  "parametros_solares": {
+    "hsp_promedio_gba": 4.5,
+    "factor_rendimiento": 0.77,
+    "co2_por_kwh_kg": 0.4,
+    "vida_util_anios": 25,
+    "degradacion_anual": 0.005
+  }
+}
