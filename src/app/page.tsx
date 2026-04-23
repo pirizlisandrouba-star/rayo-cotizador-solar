@@ -17,21 +17,17 @@ export default function Home() {
   const [datosFactura, setDatosFactura] = useState<DatosFactura | null>(null);
   const [datosTecho, setDatosTecho] = useState<DatosTecho | null>(null);
   const [resultado, setResultado] = useState<ResultadoCotizacion | null>(null);
-  const [facturasAdicionales, setFacturasAdicionales] = useState(false);
 
-  // Cuando la factura fue procesada por la IA
   const handleFacturaProcesada = (datos: DatosFactura) => {
     setDatosFactura(datos);
     setPaso('datos_extraidos');
   };
 
-  // Confirmación de datos extraídos → pasar a preguntas de techo
   const handleDatosConfirmados = (datos: DatosFactura) => {
     setDatosFactura(datos);
     setPaso('techo');
   };
 
-  // Cuando completa datos del techo → calcular y mostrar resultado
   const handleTechoCompleto = (techo: DatosTecho) => {
     setDatosTecho(techo);
     if (datosFactura) {
@@ -41,7 +37,6 @@ export default function Home() {
     }
   };
 
-  // Flujo manual (sin factura)
   const handleManualCompleto = (datos: DatosFactura, techo: DatosTecho) => {
     setDatosFactura(datos);
     setDatosTecho(techo);
@@ -50,7 +45,6 @@ export default function Home() {
     setPaso('resultado');
   };
 
-  // Volver al inicio
   const handleReset = () => {
     setPaso('upload');
     setDatosFactura(null);
@@ -58,26 +52,26 @@ export default function Home() {
     setResultado(null);
   };
 
+  // Si hay error en procesamiento, volver a upload para mostrar el error
+  const handleErrorProcesamiento = () => {
+    setPaso('upload');
+  };
+
   return (
     <main className="min-h-screen">
       <Header />
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Progress indicator */}
         {paso !== 'resultado' && paso !== 'manual' && (
           <ProgressIndicator paso={paso} />
         )}
 
-        {paso === 'upload' && (
+        {(paso === 'upload' || paso === 'procesando') && (
           <StepUploadFactura
             onFacturaProcesada={handleFacturaProcesada}
             onProcesando={() => setPaso('procesando')}
             onManual={() => setPaso('manual')}
           />
-        )}
-
-        {paso === 'procesando' && (
-          <ProcesamientoAnimation />
         )}
 
         {paso === 'datos_extraidos' && datosFactura && (
@@ -110,7 +104,6 @@ export default function Home() {
   );
 }
 
-// Indicador de progreso visual
 function ProgressIndicator({ paso }: { paso: Paso }) {
   const pasos = [
     { id: 'upload', label: 'Factura', icon: '📄' },
