@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { DatosFactura } from '@/lib/calculadora';
-import { parsearRespuestaLLM, PROMPT_EXTRACCION_FACTURA } from '@/lib/facturaParser';
+import { parsearRespuestaLLM } from '@/lib/facturaParser';
 
 interface Props {
   onFacturaProcesada: (datos: DatosFactura) => void;
@@ -14,19 +14,18 @@ interface Props {
 export default function StepUploadFactura({ onFacturaProcesada, onProcesando, onManual }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [archivos, setArchivos] = useState<File[]>([]);
+  const [detalleError, setDetalleError] = useState<string | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setError(null);
+    setDetalleError(null);
 
     if (acceptedFiles.length === 0) {
       setError('No se pudo leer el archivo. Intentá con un PDF o imagen.');
       return;
     }
 
-    setArchivos(prev => [...prev, ...acceptedFiles]);
-
-    // Por ahora para el MVP, procesamos el primer archivo
-    // TODO: Integrar con API de IA real
+    setArchivos(acceptedFiles);
     onProcesando();
 
     try {
@@ -39,21 +38,23 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Error al procesar la factura');
-
       const data = await response.json();
+
+      if (!response.ok) {
+        setDetalleError(`Status: ${response.status} - ${JSON.stringify(data).substring(0, 300)}`);
+        throw new Error(data.error || 'Error al procesar la factura');
+      }
+
       const datosFactura = parsearRespuestaLLM(JSON.stringify(data));
 
       if (datosFactura) {
         onFacturaProcesada(datosFactura);
       } else {
-        setError('No pudimos leer tu factura. ¿Querés probar con otra o ingresar los datos manualmente?');
+        setError('Pudimos leer la factura pero no interpretar los datos. Probá con otra imagen o ingresá manualmente.');
       }
-    } catch (err) {
-      console.error('Error procesando factura:', err);
-      // DEMO MODE: usar datos de ejemplo para demostración
-      const datosDemo = getDatosDemo();
-      onFacturaProcesada(datosDemo);
+    } catch (err: any) {
+      console.error('Error:', err);
+      setError(err.message || 'Error al procesar la factura.');
     }
   }, [onFacturaProcesada, onProcesando]);
 
@@ -64,12 +65,11 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
       'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
     },
     maxFiles: 5,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024,
   });
 
   return (
     <div className="animate-fade-in">
-      {/* Hero */}
       <div className="text-center mb-8">
         <h2 className="text-3xl sm:text-4xl font-bold text-rayo-azul-oscuro mb-3">
           Tu presupuesto solar <br />
@@ -81,7 +81,6 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
         </p>
       </div>
 
-      {/* Dropzone */}
       <div
         {...getRootProps()}
         className={`
@@ -119,15 +118,8 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
             </div>
           </>
         )}
-
-        {archivos.length > 0 && (
-          <div className="mt-4 text-sm text-green-600">
-            ✅ {archivos.length} archivo(s) cargado(s)
-          </div>
-        )}
       </div>
 
-      {/* Distribuidoras soportadas */}
       <div className="flex items-center justify-center gap-6 mt-6 text-sm text-gray-400">
         <span>Soportamos:</span>
         <span className="font-medium text-gray-600">EDENOR</span>
@@ -135,24 +127,55 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
         <span className="font-medium text-gray-600">EDESUR</span>
       </div>
 
-      {/* Error */}
       {error && (
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-center max-w-lg mx-auto">
-          <p className="text-red-600 text-sm">{error}</p>
+        <div className="mt-6 p-5 bg-red-50 border border-red-200 rounded-xl max-w-lg mx-auto">
+          <div className="text-center mb-3">
+            <span className="text-3xl">😕</span>
+            <h4 className="text-red-700 font-semibold mt-1">No pudimos leer tu factura</h4>
+            <p className="text-red-600 text-sm mt-1">{error}</p>
+          </div>
+
+          {detalleError && (
+            <details className="mt-3 mb-3">
+              <summary className="text-xs text-gray-400 cursor-pointer">Ver detalle técnico</summary>
+              <pre className="text-xs text-gray-500 mt-1 p-2 bg-gray-100 rounded overflow-x-auto">
+                {detalleError}
+              </pre>
+            </details>
+          )}
+
+          <div className="flex gap-2 justify-center mt-3">
+            <button
+              onClick={() => { setError(null); setDetalleError(null); setArchivos([]); }}
+              className="text-sm bg-white border border-red-200 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              🔄 Intentar de nuevo
+            </button>
+            <button
+              onClick={onManual}
+              className="text-sm bg-rayo-azul-oscuro text-rayo-amarillo px-4 py-2 rounded-lg hover:bg-rayo-azul-medio transition-colors"
+            >
+              ✏️ Ingresar manualmente
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-400 text-center mt-3">
+            💡 Tip: Probá subir una captura de pantalla (JPG/PNG) en vez de PDF
+          </p>
         </div>
       )}
 
-      {/* Link a manual */}
-      <div className="text-center mt-8">
-        <button
-          onClick={onManual}
-          className="text-sm text-rayo-azul-medio hover:text-rayo-azul-oscuro underline transition-colors"
-        >
-          No tengo la factura → Ingresar datos manualmente
-        </button>
-      </div>
+      {!error && (
+        <div className="text-center mt-8">
+          <button
+            onClick={onManual}
+            className="text-sm text-rayo-azul-medio hover:text-rayo-azul-oscuro underline transition-colors"
+          >
+            No tengo la factura → Ingresar datos manualmente
+          </button>
+        </div>
+      )}
 
-      {/* Trust indicators */}
       <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-xs text-gray-400">
         <span>🔒 Tus datos son privados</span>
         <span>🤝 Cooperativa con Triple Impacto</span>
@@ -160,39 +183,4 @@ export default function StepUploadFactura({ onFacturaProcesada, onProcesando, on
       </div>
     </div>
   );
-}
-
-// Datos de demostración para cuando no hay API conectada
-function getDatosDemo(): DatosFactura {
-  return {
-    distribuidora: 'EDESUR',
-    titular: 'LOPEZ JOSE MARIO',
-    direccion: 'SOLIER 2907',
-    localidad: 'Sarandí',
-    partido: 'Avellaneda',
-    codigoPostal: '1872',
-    cuit: '20-07619794-7',
-    numeroCliente: '03244263',
-    numeroSuministro: '0501-77421175 18',
-    numeroMedidor: '010196585',
-    categoriaTarifaria: 'T1 R Residencial 1 M',
-    consumoKwhPeriodo: 84,
-    periodoDias: 32,
-    consumoKwhMensual: 79,
-    consumoPromedioMensual: 119,
-    historialKwh: [
-      { mes: '10/2025', kwh: 104 },
-      { mes: '11/2025', kwh: 126 },
-      { mes: '12/2025', kwh: 112 },
-      { mes: '01/2026', kwh: 148 },
-      { mes: '02/2026', kwh: 160 },
-      { mes: '03/2026', kwh: 84 },
-    ],
-    cargoFijoArs: 1540.41,
-    cargoVariableArs: 11087.71,
-    impuestosArs: 3987.56,
-    totalFacturaArs: 26364.71,
-    precioKwhEfectivoArs: 131.99,
-    tieneSubsidio: false,
-  };
 }
