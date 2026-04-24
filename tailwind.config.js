@@ -9,12 +9,15 @@ module.exports = {
     extend: {
       colors: {
         rayo: {
-          'azul-oscuro': 'rgb(15, 32, 65)',
-          'azul-medio': 'rgb(30, 60, 115)',
-          'amarillo': 'rgb(255, 200, 0)',
+          'celeste': 'rgb(27, 153, 214)',
+          'celeste-oscuro': 'rgb(20, 120, 175)',
+          'celeste-claro': 'rgb(60, 175, 230)',
+          'amarillo': 'rgb(245, 183, 49)',
+          'amarillo-claro': 'rgb(255, 205, 80)',
           'blanco': 'rgb(255, 255, 255)',
-          'gris-claro': 'rgb(245, 247, 250)',
-          'gris-medio': 'rgb(120, 130, 150)',
+          'gris-claro': 'rgb(245, 248, 252)',
+          'gris-medio': 'rgb(120, 140, 160)',
+          'oscuro': 'rgb(25, 45, 65)',
         }
       },
       fontFamily: {
