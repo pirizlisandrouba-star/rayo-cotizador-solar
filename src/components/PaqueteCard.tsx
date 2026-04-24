@@ -28,9 +28,9 @@ export default function PaqueteCard({ paquete, tipoInstalacion, consumoMensual }
       }`}
     >
       {paquete.esRecomendado && (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-          <span className="bg-rayo-amarillo text-rayo-oscuro text-xs font-bold px-3 py-1 rounded-full">
-            ⭐ IDEAL PARA VOS
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-10">
+          <span className="bg-rayo-amarillo text-rayo-oscuro text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+            ⭐ RECOMENDADO
           </span>
         </div>
       )}
