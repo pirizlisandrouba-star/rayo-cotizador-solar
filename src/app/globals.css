@@ -5,10 +5,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
-  --rayo-azul-oscuro: rgb(15, 32, 65);
-  --rayo-azul-medio: rgb(30, 60, 115);
-  --rayo-amarillo: rgb(255, 200, 0);
+  --rayo-celeste: rgb(27, 153, 214);
+  --rayo-celeste-oscuro: rgb(20, 120, 175);
+  --rayo-amarillo: rgb(245, 183, 49);
   --rayo-blanco: rgb(255, 255, 255);
+  --rayo-oscuro: rgb(25, 45, 65);
 }
 
 * {
@@ -21,37 +22,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgb(245, 247, 250);
+  background: rgb(245, 248, 252);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgb(30, 60, 115);
+  background: rgb(27, 153, 214);
   border-radius: 3px;
-}
-
-/* Animación del rayo */
-@keyframes lightning {
-  0% { opacity: 0; transform: translateY(-10px); }
-  10% { opacity: 1; transform: translateY(0); }
-  20% { opacity: 0.3; }
-  30% { opacity: 1; }
-  100% { opacity: 1; }
-}
-
-.animate-lightning {
-  animation: lightning 1.5s ease-out;
-}
-
-/* Progress bar animation */
-@keyframes progressFill {
-  0% { width: 0%; }
-  100% { width: var(--progress-width); }
-}
-
-.progress-fill {
-  animation: progressFill 0.8s ease-out forwards;
 }
