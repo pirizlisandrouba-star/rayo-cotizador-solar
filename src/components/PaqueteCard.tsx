@@ -16,7 +16,7 @@ export default function PaqueteCard({ paquete, tipoInstalacion, consumoMensual }
   const cobertura = paquete.porcentajeConsumoMensual;
   const coberturaColor =
     cobertura >= 100 ? 'text-green-600' :
-    cobertura >= 70 ? 'text-blue-600' :
+    cobertura >= 70 ? 'text-rayo-celeste' :
     'text-orange-500';
 
   return (
@@ -27,24 +27,21 @@ export default function PaqueteCard({ paquete, tipoInstalacion, consumoMensual }
           : 'border-transparent hover:border-gray-200'
       }`}
     >
-      {/* Badge recomendado */}
       {paquete.esRecomendado && (
         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-          <span className="bg-rayo-amarillo text-rayo-azul-oscuro text-xs font-bold px-3 py-1 rounded-full">
+          <span className="bg-rayo-amarillo text-rayo-oscuro text-xs font-bold px-3 py-1 rounded-full">
             ⭐ IDEAL PARA VOS
           </span>
         </div>
       )}
 
-      {/* Nombre del paquete */}
       <div className="text-center mb-4 mt-1">
-        <h3 className="text-lg font-bold text-rayo-azul-oscuro">{paquete.nombre}</h3>
+        <h3 className="text-lg font-bold text-rayo-oscuro">{paquete.nombre}</h3>
         <p className="text-sm text-gray-500">
           {paquete.paneles} paneles · {paquete.potenciaKwp} kWp
         </p>
       </div>
 
-      {/* Cobertura visual */}
       <div className="text-center mb-4">
         <div className="inline-flex items-center gap-2">
           <span className={`text-3xl font-bold ${coberturaColor}`}>
@@ -54,12 +51,11 @@ export default function PaqueteCard({ paquete, tipoInstalacion, consumoMensual }
             de tu consumo<br />cubierto
           </span>
         </div>
-        {/* Mini progress bar */}
         <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
           <div
             className={`h-2 rounded-full transition-all ${
               cobertura >= 100 ? 'bg-green-500' :
-              cobertura >= 70 ? 'bg-blue-500' :
+              cobertura >= 70 ? 'bg-rayo-celeste' :
               'bg-orange-400'
             }`}
             style={{ width: `${Math.min(cobertura, 100)}%` }}
@@ -67,40 +63,16 @@ export default function PaqueteCard({ paquete, tipoInstalacion, consumoMensual }
         </div>
       </div>
 
-      {/* Generación */}
       <div className="space-y-2 mb-4">
-        <InfoRow
-          label="Generás"
-          value={`${paquete.generacionMensualKwh} kWh/mes`}
-          icon="☀️"
-        />
-        <InfoRow
-          label="Ahorrás"
-          value={`$${paquete.ahorroMensualArs.toLocaleString('es-AR')}/mes`}
-          icon="💰"
-          highlight
-        />
-        <InfoRow
-          label="Ahorro anual"
-          value={`$${paquete.ahorroAnualArs.toLocaleString('es-AR')}`}
-          icon="📊"
-        />
-        <InfoRow
-          label="Payback"
-          value={payback < 50 ? `~${payback} años` : 'Largo plazo'}
-          icon="⏱️"
-        />
+        <InfoRow label="Generás" value={`${paquete.generacionMensualKwh} kWh/mes`} icon="☀️" />
+        <InfoRow label="Ahorrás" value={`$${paquete.ahorroMensualArs.toLocaleString('es-AR')}/mes`} icon="💰" highlight />
+        <InfoRow label="Ahorro anual" value={`$${paquete.ahorroAnualArs.toLocaleString('es-AR')}`} icon="📊" />
+        <InfoRow label="Payback" value={payback < 50 ? `~${payback} años` : 'Largo plazo'} icon="⏱️" />
         {paquete.excedente && (
-          <InfoRow
-            label="Excedente"
-            value="Inyectás a la red → crédito"
-            icon="🔌"
-            highlight
-          />
+          <InfoRow label="Excedente" value="Inyectás a la red" icon="🔌" highlight />
         )}
       </div>
 
-      {/* Impacto ambiental */}
       <div className="bg-green-50 rounded-xl p-3 mb-4">
         <p className="text-xs font-medium text-green-800 mb-1">🌍 Tu impacto ambiental</p>
         <div className="flex justify-between text-xs text-green-700">
@@ -109,33 +81,30 @@ export default function PaqueteCard({ paquete, tipoInstalacion, consumoMensual }
         </div>
       </div>
 
-      {/* Espacio requerido */}
       <p className="text-xs text-gray-400 text-center mb-4">
         Espacio en techo: ~{paquete.espacioTechoM2} m²
       </p>
 
-      {/* Precio */}
-      <div className="text-center bg-rayo-azul-oscuro rounded-xl p-4">
-        <p className="text-xs text-gray-300 mb-1">
+      <div className="text-center bg-rayo-celeste rounded-xl p-4">
+        <p className="text-xs text-white/70 mb-1">
           {tipoInstalacion === 'on_grid' ? 'On Grid' : 'Híbrido'}
         </p>
-        <p className="text-2xl font-bold text-rayo-amarillo">
+        <p className="text-2xl font-bold text-white">
           USD {precio.toLocaleString('en-US')}
         </p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-white/60 mt-1">
           ~${precioArs.toLocaleString('es-AR')} ARS
         </p>
       </div>
 
-      {/* CTA */}
       <a
-        href={`https://wa.me/5491100000000?text=Hola!%20Me%20interesa%20el%20paquete%20${encodeURIComponent(paquete.nombre)}%20${tipoInstalacion === 'hibrido' ? 'Híbrido' : 'On%20Grid'}`}
+        href={`https://wa.me/5491100000000?text=Hola!%20Me%20interesa%20el%20paquete%20${encodeURIComponent(paquete.nombre)}%20${tipoInstalacion === 'hibrido' ? 'Hibrido' : 'On%20Grid'}`}
         target="_blank"
         rel="noopener noreferrer"
         className={`block w-full text-center py-3 rounded-xl font-semibold text-sm mt-4 transition-all ${
           paquete.esRecomendado
-            ? 'bg-rayo-amarillo text-rayo-azul-oscuro hover:bg-yellow-400 shadow-md'
-            : 'bg-gray-100 text-rayo-azul-oscuro hover:bg-gray-200'
+            ? 'bg-rayo-amarillo text-rayo-oscuro hover:bg-rayo-amarillo-claro shadow-md'
+            : 'bg-gray-100 text-rayo-oscuro hover:bg-gray-200'
         }`}
       >
         {paquete.esRecomendado ? '⚡ ¡Quiero este paquete!' : 'Consultar'}
@@ -144,17 +113,13 @@ export default function PaqueteCard({ paquete, tipoInstalacion, consumoMensual }
   );
 }
 
-function InfoRow({
-  label, value, icon, highlight
-}: {
-  label: string; value: string; icon: string; highlight?: boolean;
-}) {
+function InfoRow({ label, value, icon, highlight }: { label: string; value: string; icon: string; highlight?: boolean; }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-xs text-gray-500 flex items-center gap-1">
         <span>{icon}</span> {label}
       </span>
-      <span className={`text-sm font-medium ${highlight ? 'text-green-600' : 'text-rayo-azul-oscuro'}`}>
+      <span className={`text-sm font-medium ${highlight ? 'text-green-600' : 'text-rayo-oscuro'}`}>
         {value}
       </span>
     </div>
